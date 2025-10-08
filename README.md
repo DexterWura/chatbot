@@ -1,12 +1,13 @@
-AI Chatbot using OpenAI API
-This is a simple AI-powered chatbot built using HTML, CSS, JavaScript, and PHP. The chatbot interacts with users and fetches intelligent responses using the OpenAI API (GPT models).
+AI Chatbot – Multi‑Provider (OpenAI, DeepSeek, Gemini, Claude)
+This app is now a clean OOP PHP project with a provider-based architecture. The UI has been redesigned to resemble ChatGPT with a sidebar, center canvas, and a bottom composer. Users can select the provider and model at runtime.
 
 🚀 Features
 Real-time chat interface
-Supports OpenAI GPT-3.5-Turbo model (configurable)
-Handles empty input and API errors gracefully
+Multi-provider (OpenAI, DeepSeek, Gemini, Claude)
+Runtime provider/model selector
+OOP provider adapters
 Logs raw responses for debugging
-Easily customizable front-end using HTML/CSS
+Modern ChatGPT-like UI
 🛠️ Technologies Used
 HTML: For the front-end UI
 CSS: For styling the chat interface
@@ -23,12 +24,17 @@ cd your-repo-name
 No additional dependencies are required beyond PHP and OpenAI API access.
 Make sure PHP is installed and configured on your system.
 
-3. Set Up OpenAI API Key
-Get your OpenAI API key from OpenAI.
-Add your API key to the PHP code in chat.php:
-php
-Copy code
-$apiKey = 'your_openai_api_key';
+3. Set API Keys (Environment recommended)
+Windows (PowerShell):
+
+```
+setx OPENAI_API_KEY "sk-..."
+setx DEEPSEEK_API_KEY "ds-..."
+setx GEMINI_API_KEY "AIza..."
+setx ANTHROPIC_API_KEY "anthropic-..."
+```
+
+Or edit placeholders in `api/router.php`.
 4. Run the Chatbot Locally
 Start a local PHP server:
 bash
@@ -37,15 +43,25 @@ php -S localhost:8000
 Open your browser and visit:
 http://localhost:8000/index.html
 🔧 File Structure
-bash
-Copy code
-/your-repo-name
-│
-├── index.html        # Front-end chat UI
-├── style.css         # CSS for styling the chatbot
-├── script.js         # JavaScript for AJAX requests
-├── chat.php          # PHP backend to connect with OpenAI API
-└── README.md         # Documentation (this file)
+
+```
+/chatbot
+├── api/
+│   ├── BaseProvider.php
+│   ├── router.php
+│   └── providers/
+│       ├── OpenAI.php
+│       ├── Deepseek.php
+│       ├── Gemini.php
+│       └── Claude.php
+├── assets/
+│   ├── css/style.css
+│   └── js/app.js
+├── index.html
+├── chat.php
+├── debug_log.txt
+└── README.md
+```
 ⚙️ Configuration
 Model Selection
 You can modify the model used in the chat.php file. By default, it uses gpt-3.5-turbo.
@@ -60,9 +76,7 @@ php
 Copy code
 'temperature' => 0.7,
 📋 Usage
-Enter your message in the chat input field.
-Click Send or press Enter to receive a response from the AI.
-If the API quota is exceeded, an error message will be displayed. Ensure your OpenAI API credits are available.
+Choose a provider and model using the dropdowns in the header. Type a message and press Enter or click Send. Use New chat to clear the thread.
 🛠️ Troubleshooting
 Error: "You exceeded your current quota"
 This error indicates your OpenAI free credits have been used up, or your API usage has exceeded the quota.

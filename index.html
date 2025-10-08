@@ -4,18 +4,35 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Chatbot</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="assets/css/style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.6.0/css/all.min.css" crossorigin="anonymous" referrerpolicy="no-referrer">
 </head>
 <body>
-    <div class="chat-container">
-        <div class="chat-header">AI Chatbot</div>
-        <div class="chat-messages" id="chat-messages"></div>
-        <div class="chat-input">
-            <input type="text" id="user-input" placeholder="Type your message..." autocomplete="off">
-            <button id="send-btn">Send</button>
-        </div>
+    <div class="app">
+        <aside class="sidebar">
+            <div class="brand">ChatGPT</div>
+            <button class="new-chat" id="new-chat" title="New chat"><i class="fa-solid fa-plus" aria-hidden="true"></i> New chat</button>
+            <div class="spacer"></div>
+            <div class="library">Library</div>
+        </aside>
+        <main class="main">
+            <header class="topbar">
+                <div class="title"><button class="menu-btn" id="menu-btn" title="Menu" aria-label="Toggle Menu"><i class="fa-solid fa-bars" aria-hidden="true"></i></button> ChatGPT</div>
+                <div class="controls">
+                    <select id="provider-select"></select>
+                    <select id="model-select"></select>
+                </div>
+            </header>
+            <section class="messages" id="chat-messages"></section>
+            <footer class="composer">
+                <div class="input-wrap">
+                    <input type="text" id="user-input" placeholder="Ask anything" autocomplete="off">
+                    <button id="send-btn" aria-label="Send"><i class="fa-solid fa-paper-plane" aria-hidden="true"></i></button>
+                </div>
+            </footer>
+        </main>
     </div>
 
-    <script src="script.js"></script>
+    <script src="assets/js/app.js"></script>
 </body>
 </html>
