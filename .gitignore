@@ -1,0 +1,9 @@
+storage/
+config.php
+debug_log.txt
+*.log
+.env
+.installed
+.env.backup
+*.bak
+*.tmp

@@ -1,59 +1,90 @@
 <?php
-require_once __DIR__ . '/../BaseProvider.php';
 
-class Claude implements BaseProvider {
-    private string $apiKey;
+namespace Chatbot\Providers;
 
-    public function __construct(string $apiKey) {
-        $this->apiKey = $apiKey;
+use Chatbot\Core\AbstractProvider;
+use Chatbot\Core\ChatResponse;
+use Chatbot\Core\ProviderCapabilities;
+
+/**
+ * Claude (Anthropic) Provider Implementation
+ */
+class Claude extends AbstractProvider {
+    public function getName(): string {
+        return 'claude';
     }
 
-    public function name(): string { return 'claude'; }
-
-    public function models(): array {
-        return ['claude-3-opus-20240229', 'claude-3-sonnet-20240229', 'claude-3-haiku-20240307'];
+    public function getModels(): array {
+        return [
+            'claude-3-opus-20240229',
+            'claude-3-sonnet-20240229',
+            'claude-3-haiku-20240307',
+            'claude-3-5-sonnet-20241022'
+        ];
     }
 
-    public function chat(array $messages, array $options = []): array {
+    public function getCapabilities(): ProviderCapabilities {
+        return new ProviderCapabilities(
+            supportsStreaming: true,
+            supportsFunctionCalling: true,
+            supportsVision: true,
+            maxTokens: 200000,
+            supportedFeatures: ['streaming', 'functions', 'vision', 'long_context']
+        );
+    }
+
+    protected function buildPayload(array $messages, array $options): array {
         $model = $options['model'] ?? 'claude-3-haiku-20240307';
         $temperature = $options['temperature'] ?? 0.7;
+        $maxTokens = $options['max_tokens'] ?? 1024;
 
-        $payload = [
+        return [
             'model' => $model,
-            'max_tokens' => 1024,
+            'max_tokens' => $maxTokens,
             'temperature' => $temperature,
             'messages' => $messages,
         ];
+    }
 
-        $ch = curl_init('https://api.anthropic.com/v1/messages');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'x-api-key: ' . $this->apiKey,
-            'anthropic-version: 2023-06-01'
-        ]);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
+    protected function getApiEndpoint(): string {
+        return 'https://api.anthropic.com/v1/messages';
+    }
 
-        $response = curl_exec($ch);
-        if (curl_errno($ch)) {
-            $err = curl_error($ch);
-            curl_close($ch);
-            return ['ok' => false, 'reply' => 'cURL error: ' . $err, 'raw' => null];
+    protected function getHeaders(): array {
+        return [
+            'x-api-key' => $this->apiKey,
+            'anthropic-version' => '2023-06-01',
+            'content-type' => 'application/json'
+        ];
+    }
+
+    protected function parseResponse(array $response): ChatResponse {
+        $httpCode = $response['status_code'];
+        $data = $response['body'];
+
+        if ($httpCode !== 200) {
+            $errorMsg = $data['error']['message'] ?? 'Unknown error';
+            return ChatResponse::failure($errorMsg, $data);
         }
-        curl_close($ch);
 
-        $data = json_decode($response, true);
         if (isset($data['error'])) {
-            return ['ok' => false, 'reply' => ($data['error']['message'] ?? 'Unknown error'), 'raw' => $data];
+            return ChatResponse::failure(
+                $data['error']['message'] ?? 'Unknown error',
+                $data
+            );
         }
+
         $content = '';
         if (isset($data['content'][0]['text'])) {
             $content = $data['content'][0]['text'];
         }
-        return ['ok' => true, 'reply' => $content, 'raw' => $data];
+
+        $metadata = [
+            'model' => $data['model'] ?? '',
+            'usage' => $data['usage'] ?? [],
+            'stop_reason' => $data['stop_reason'] ?? '',
+        ];
+
+        return ChatResponse::success($content, $data, $metadata);
     }
 }
-?>
-
-

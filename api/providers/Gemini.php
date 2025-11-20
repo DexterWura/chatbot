@@ -1,21 +1,41 @@
 <?php
-require_once __DIR__ . '/../BaseProvider.php';
 
-class Gemini implements BaseProvider {
-    private string $apiKey;
+namespace Chatbot\Providers;
 
-    public function __construct(string $apiKey) {
-        $this->apiKey = $apiKey;
+use Chatbot\Core\AbstractProvider;
+use Chatbot\Core\ChatResponse;
+use Chatbot\Core\ProviderCapabilities;
+
+/**
+ * Google Gemini Provider Implementation
+ */
+class Gemini extends AbstractProvider {
+    public function getName(): string {
+        return 'gemini';
     }
 
-    public function name(): string { return 'gemini'; }
-
-    public function models(): array {
-        return ['gemini-1.5-pro', 'gemini-1.5-flash'];
+    public function getModels(): array {
+        return [
+            'gemini-1.5-pro',
+            'gemini-1.5-flash',
+            'gemini-1.5-pro-latest',
+            'gemini-pro'
+        ];
     }
 
-    public function chat(array $messages, array $options = []): array {
+    public function getCapabilities(): ProviderCapabilities {
+        return new ProviderCapabilities(
+            supportsStreaming: true,
+            supportsFunctionCalling: true,
+            supportsVision: true,
+            maxTokens: 8192,
+            supportedFeatures: ['streaming', 'functions', 'vision', 'multimodal']
+        );
+    }
+
+    protected function buildPayload(array $messages, array $options): array {
         $model = $options['model'] ?? 'gemini-1.5-flash';
+        
         // Convert OpenAI-like messages to Gemini format
         $contents = [];
         foreach ($messages as $m) {
@@ -30,29 +50,50 @@ class Gemini implements BaseProvider {
             'contents' => $contents,
         ];
 
-        $url = 'https://generativelanguage.googleapis.com/v1beta/models/' . urlencode($model) . ':generateContent?key=' . urlencode($this->apiKey);
-        $ch = curl_init($url);
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, ['Content-Type: application/json']);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-
-        $response = curl_exec($ch);
-        if (curl_errno($ch)) {
-            $err = curl_error($ch);
-            curl_close($ch);
-            return ['ok' => false, 'reply' => 'cURL error: ' . $err, 'raw' => null];
+        if (isset($options['temperature'])) {
+            $payload['generationConfig'] = [
+                'temperature' => $options['temperature']
+            ];
         }
-        curl_close($ch);
 
-        $data = json_decode($response, true);
+        return $payload;
+    }
+
+    protected function getApiEndpoint(): string {
+        $model = $this->config['model'] ?? 'gemini-1.5-flash';
+        return 'https://generativelanguage.googleapis.com/v1beta/models/' . 
+               urlencode($model) . ':generateContent?key=' . urlencode($this->apiKey);
+    }
+
+    protected function getHeaders(): array {
+        return [
+            'Content-Type' => 'application/json'
+        ];
+    }
+
+    protected function parseResponse(array $response): ChatResponse {
+        $httpCode = $response['status_code'];
+        $data = $response['body'];
+
+        if ($httpCode !== 200) {
+            $errorMsg = $data['error']['message'] ?? 'Unknown error';
+            return ChatResponse::failure($errorMsg, $data);
+        }
+
         if (isset($data['error'])) {
-            return ['ok' => false, 'reply' => ($data['error']['message'] ?? 'Unknown error'), 'raw' => $data];
+            return ChatResponse::failure(
+                $data['error']['message'] ?? 'Unknown error',
+                $data
+            );
         }
+
         $content = $data['candidates'][0]['content']['parts'][0]['text'] ?? '';
-        return ['ok' => true, 'reply' => $content, 'raw' => $data];
+        $metadata = [
+            'model' => $data['modelVersion'] ?? '',
+            'usage' => $data['usageMetadata'] ?? [],
+            'finish_reason' => $data['candidates'][0]['finishReason'] ?? '',
+        ];
+
+        return ChatResponse::success($content, $data, $metadata);
     }
 }
-?>
-
-

@@ -1,0 +1,27 @@
+# Redirect to installer if not installed
+RewriteEngine On
+
+# Don't redirect installer, API, or assets
+RewriteCond %{REQUEST_URI} !^/install\.php
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_URI} !^/assets/
+RewriteCond %{REQUEST_URI} !^/storage/
+RewriteCond %{REQUEST_URI} !^/index\.html
+RewriteCond %{REQUEST_URI} !^/\.installed
+
+# Check if .installed file exists
+RewriteCond %{DOCUMENT_ROOT}/.installed !-f
+
+# Redirect to installer
+RewriteRule ^(.*)$ /install.php [L,R=302]
+
+# Security: Protect sensitive files
+<FilesMatch "\.(env|log|json|md)$">
+    Order allow,deny
+    Deny from all
+</FilesMatch>
+
+# Protect storage directory
+<DirectoryMatch "^.*/storage/">
+    Options -Indexes
+</DirectoryMatch>

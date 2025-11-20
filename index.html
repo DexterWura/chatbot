@@ -12,8 +12,15 @@
         <aside class="sidebar">
             <div class="brand">ChatGPT</div>
             <button class="new-chat" id="new-chat" title="New chat"><i class="fa-solid fa-plus" aria-hidden="true"></i> New chat</button>
+            <div class="sessions-container">
+                <div class="library">Conversations</div>
+                <div id="sessions-list" class="sessions-list"></div>
+            </div>
             <div class="spacer"></div>
-            <div class="library">Library</div>
+            <div class="sidebar-footer">
+                <button class="sidebar-btn" id="export-btn" title="Export"><i class="fa-solid fa-download"></i> Export</button>
+                <button class="sidebar-btn" id="import-btn" title="Import"><i class="fa-solid fa-upload"></i> Import</button>
+            </div>
         </aside>
         <main class="main">
             <header class="topbar">
@@ -21,6 +28,8 @@
                 <div class="controls">
                     <select id="provider-select"></select>
                     <select id="model-select"></select>
+                    <button class="icon-btn" id="settings-btn" title="Settings"><i class="fa-solid fa-gear"></i></button>
+                    <button class="icon-btn" id="analytics-btn" title="Analytics"><i class="fa-solid fa-chart-line"></i></button>
                 </div>
             </header>
             <section class="messages" id="chat-messages"></section>
@@ -33,6 +42,7 @@
         </main>
     </div>
 
+    <script src="assets/js/ChatApp.js"></script>
     <script src="assets/js/app.js"></script>
 </body>
 </html>

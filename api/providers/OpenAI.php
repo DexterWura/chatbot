@@ -1,59 +1,95 @@
 <?php
-require_once __DIR__ . '/../BaseProvider.php';
 
-class OpenAI implements BaseProvider {
-    private string $apiKey;
+namespace Chatbot\Providers;
 
-    public function __construct(string $apiKey) {
-        $this->apiKey = $apiKey;
+use Chatbot\Core\AbstractProvider;
+use Chatbot\Core\ChatResponse;
+use Chatbot\Core\ProviderCapabilities;
+
+/**
+ * OpenAI Provider Implementation
+ */
+class OpenAI extends AbstractProvider {
+    public function getName(): string {
+        return 'openai';
     }
 
-    public function name(): string { return 'openai'; }
-
-    public function models(): array {
+    public function getModels(): array {
         return [
             'gpt-4o-mini',
             'gpt-4o',
-            'gpt-4.1-mini',
+            'gpt-4-turbo',
+            'gpt-4',
             'gpt-3.5-turbo'
         ];
     }
 
-    public function chat(array $messages, array $options = []): array {
+    public function getCapabilities(): ProviderCapabilities {
+        return new ProviderCapabilities(
+            supportsStreaming: true,
+            supportsFunctionCalling: true,
+            supportsVision: true,
+            maxTokens: 16384,
+            supportedFeatures: ['streaming', 'functions', 'vision', 'json_mode']
+        );
+    }
+
+    protected function buildPayload(array $messages, array $options): array {
         $model = $options['model'] ?? 'gpt-4o-mini';
         $temperature = $options['temperature'] ?? 0.7;
+        $maxTokens = $options['max_tokens'] ?? $this->config['max_tokens'] ?? 2048;
 
         $payload = [
             'model' => $model,
             'messages' => $messages,
             'temperature' => $temperature,
+            'max_tokens' => $maxTokens,
         ];
 
-        $ch = curl_init('https://api.openai.com/v1/chat/completions');
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-        curl_setopt($ch, CURLOPT_HTTPHEADER, [
-            'Content-Type: application/json',
-            'Authorization: Bearer ' . $this->apiKey,
-        ]);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, json_encode($payload));
-
-        $response = curl_exec($ch);
-        if (curl_errno($ch)) {
-            $err = curl_error($ch);
-            curl_close($ch);
-            return ['ok' => false, 'reply' => 'cURL error: ' . $err, 'raw' => null];
+        if (isset($options['stream']) && $options['stream']) {
+            $payload['stream'] = true;
         }
-        curl_close($ch);
 
-        $data = json_decode($response, true);
+        if (isset($options['functions'])) {
+            $payload['functions'] = $options['functions'];
+        }
+
+        return $payload;
+    }
+
+    protected function getApiEndpoint(): string {
+        return 'https://api.openai.com/v1/chat/completions';
+    }
+
+    protected function getHeaders(): array {
+        return [
+            'Authorization' => 'Bearer ' . $this->apiKey
+        ];
+    }
+
+    protected function parseResponse(array $response): ChatResponse {
+        $httpCode = $response['status_code'];
+        $data = $response['body'];
+
+        if ($httpCode !== 200) {
+            $errorMsg = $data['error']['message'] ?? 'Unknown error';
+            return ChatResponse::failure($errorMsg, $data);
+        }
+
         if (isset($data['error'])) {
-            return ['ok' => false, 'reply' => ($data['error']['message'] ?? 'Unknown error'), 'raw' => $data];
+            return ChatResponse::failure(
+                $data['error']['message'] ?? 'Unknown error',
+                $data
+            );
         }
+
         $content = $data['choices'][0]['message']['content'] ?? '';
-        return ['ok' => true, 'reply' => $content, 'raw' => $data];
+        $metadata = [
+            'model' => $data['model'] ?? '',
+            'usage' => $data['usage'] ?? [],
+            'finish_reason' => $data['choices'][0]['finish_reason'] ?? '',
+        ];
+
+        return ChatResponse::success($content, $data, $metadata);
     }
 }
-?>
-
-

@@ -1,0 +1,35 @@
+<?php
+
+/**
+ * Configuration File Example
+ * Copy this to config.php and customize
+ */
+return [
+    'api_keys' => [
+        'openai' => getenv('OPENAI_API_KEY') ?: 'put_openai_api_key_here',
+        'deepseek' => getenv('DEEPSEEK_API_KEY') ?: 'put_deepseek_api_key_here',
+        'gemini' => getenv('GEMINI_API_KEY') ?: 'put_gemini_api_key_here',
+        'anthropic' => getenv('ANTHROPIC_API_KEY') ?: 'put_anthropic_api_key_here',
+    ],
+    'default_provider' => 'openai',
+    'default_model' => null,
+    'default_temperature' => 0.7,
+    'max_tokens' => 2048,
+    'rate_limit' => [
+        'enabled' => true,
+        'max_requests' => 60,
+        'time_window' => 60,
+    ],
+    'cache' => [
+        'enabled' => true,
+        'ttl' => 300,
+    ],
+    'storage' => [
+        'conversations_path' => __DIR__ . '/storage/conversations',
+        'logs_path' => __DIR__ . '/storage/logs',
+    ],
+    'logging' => [
+        'enabled' => true,
+        'level' => 'INFO', // DEBUG, INFO, WARNING, ERROR
+    ],
+];

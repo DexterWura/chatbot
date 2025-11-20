@@ -12,7 +12,18 @@ body{margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,Arial,sans-serif;backg
 .main{flex:1;display:flex;flex-direction:column}
 .topbar{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--border);background:var(--panel)}
 .title{font-weight:600}
-.controls select{margin-left:8px;padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff}
+.controls{display:flex;align-items:center;gap:8px}
+.controls select{padding:8px;border:1px solid var(--border);border-radius:8px;background:#fff}
+.icon-btn{width:36px;height:36px;border:1px solid var(--border);border-radius:8px;background:#fff;cursor:pointer;display:flex;align-items:center;justify-content:center}
+.icon-btn:hover{background:#f3f4f6}
+.sessions-container{flex:1;overflow-y:auto;margin-top:16px}
+.sessions-list{display:flex;flex-direction:column;gap:4px}
+.session-item{padding:10px;border-radius:8px;cursor:pointer;color:#9ca3af;font-size:14px}
+.session-item:hover{background:#1f2937}
+.session-item.active{background:#374151;color:#fff}
+.sidebar-footer{display:flex;flex-direction:column;gap:8px;padding-top:16px;border-top:1px solid #374151}
+.sidebar-btn{background:#1f2937;color:#e5e7eb;border:1px solid #374151;border-radius:8px;padding:8px;cursor:pointer;text-align:left;font-size:13px;display:flex;align-items:center;gap:8px}
+.sidebar-btn:hover{background:#374151}
 .messages{flex:1;overflow:auto;padding:24px;display:flex;flex-direction:column;gap:14px}
 .message{max-width:800px;margin:0 auto;width:100%;background:#fff;border:1px solid var(--border);border-radius:12px;padding:14px}
 .message.user{background:#e8fff7;border-color:#b6f3df}
