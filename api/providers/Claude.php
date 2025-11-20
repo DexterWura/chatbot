@@ -87,4 +87,24 @@ class Claude extends AbstractProvider {
 
         return ChatResponse::success($content, $data, $metadata);
     }
+
+    public function streamChat(array $messages, array $options = [], callable $callback = null): void {
+        // Claude streaming implementation (similar to OpenAI)
+        // For now, fallback to non-streaming
+        if ($callback) {
+            $result = $this->chat($messages, $options);
+            if ($result->isSuccess()) {
+                $content = $result->getContent();
+                // Simulate streaming by sending in chunks
+                $chunks = str_split($content, 5);
+                foreach ($chunks as $chunk) {
+                    $callback(['token' => $chunk, 'content' => substr($content, 0, strlen($chunk))], false);
+                    usleep(50000); // 50ms delay
+                }
+                $callback(['done' => true, 'content' => $content], true);
+            } else {
+                $callback(['error' => $result->getErrorMessage()], true);
+            }
+        }
+    }
 }

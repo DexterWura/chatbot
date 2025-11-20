@@ -22,7 +22,8 @@ use Chatbot\Core\{
     SessionManager,
     AnalyticsService,
     FileLogger,
-    EventDispatcher
+    EventDispatcher,
+    StreamingResponse
 };
 
 // Initialize configuration
@@ -219,7 +220,78 @@ $handler = function (Request $request): Response {
             'session_id' => $sessionId
         ]);
 
-        // Make chat request
+        // Check if streaming is requested
+        $stream = $data['stream'] ?? false;
+        
+        if ($stream && $provider->getCapabilities()->supportsStreaming()) {
+            // Handle streaming response - bypass middleware for streaming
+            $streamingResponse = new StreamingResponse();
+            $streamingResponse->start();
+            
+            $fullContent = '';
+            $chatOptions = array_merge([
+                'model' => $model,
+                'temperature' => $temperature,
+            ], $options);
+            
+            $provider->streamChat($messages, $chatOptions, function($chunk, $isComplete) use (
+                $streamingResponse, 
+                &$fullContent, 
+                $sessionManager, 
+                $sessionId, 
+                $messages,
+                $providerKey,
+                $model,
+                $analyticsService,
+                $logger
+            ) {
+                if (is_string($chunk)) {
+                    // Raw chunk from provider
+                    return;
+                }
+                
+                if (isset($chunk['error'])) {
+                    $streamingResponse->sendJSON(['error' => $chunk['error']], 'error');
+                    $streamingResponse->end();
+                    return;
+                }
+                
+                if (isset($chunk['token'])) {
+                    $fullContent = $chunk['content'];
+                    $streamingResponse->sendJSON([
+                        'token' => $chunk['token'],
+                        'content' => $fullContent
+                    ]);
+                }
+                
+                if (isset($chunk['done']) && $chunk['done']) {
+                    // Save conversation
+                    $sessionData = $sessionManager->loadSession($sessionId);
+                    $sessionMessages = $sessionData['messages'] ?? [];
+                    $sessionMessages = array_merge($sessionMessages, $messages);
+                    $sessionMessages[] = [
+                        'role' => 'assistant',
+                        'content' => $fullContent
+                    ];
+                    
+                    $sessionManager->saveSession($sessionId, $sessionMessages, [
+                        'last_provider' => $providerKey,
+                        'last_model' => $model,
+                        'title' => generateTitle($sessionMessages)
+                    ]);
+                    
+                    // Track analytics (approximate)
+                    $analyticsService->trackRequest($providerKey, $model ?? 'default', strlen($fullContent) / 4);
+                    
+                    $streamingResponse->sendJSON(['done' => true, 'content' => $fullContent], 'done');
+                    $streamingResponse->end();
+                }
+            });
+            
+            return; // Streaming response handles its own output
+        }
+
+        // Make chat request (non-streaming)
         $chatOptions = array_merge([
             'model' => $model,
             'temperature' => $temperature,
@@ -289,8 +361,17 @@ function generateTitle(array $messages): string {
 // Process request through pipeline
 try {
     $request = Request::fromGlobals();
-    $response = $pipeline->handle($request, $handler);
-    $response->send();
+    
+    // Check if this is a streaming request - bypass middleware
+    $data = $request->getData();
+    if (isset($data['stream']) && $data['stream'] === true) {
+        // Direct handler call for streaming (bypasses middleware)
+        $handler($request);
+    } else {
+        // Normal request through middleware
+        $response = $pipeline->handle($request, $handler);
+        $response->send();
+    }
 } catch (\Exception $e) {
     if ($logger) {
         $logger->error("Router error: " . $e->getMessage(), [

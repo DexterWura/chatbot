@@ -47,6 +47,40 @@ abstract class AbstractProvider implements ProviderInterface {
         }
     }
 
+    public function streamChat(array $messages, array $options = [], callable $callback = null): void {
+        if (!$this->isAvailable()) {
+            if ($callback) {
+                $callback(['error' => 'Provider API key not configured'], true);
+            }
+            return;
+        }
+
+        try {
+            $this->validateMessages($messages);
+            $this->validateOptions($options);
+            
+            $options['stream'] = true;
+            $payload = $this->buildPayload($messages, $options);
+            
+            $streamingClient = new \Chatbot\Core\StreamingHttpClient();
+            $streamingClient->streamPost(
+                $this->getApiEndpoint(),
+                $payload,
+                $this->getHeaders(),
+                function($chunk, $isComplete) use ($callback) {
+                    if ($callback) {
+                        $callback($chunk, $isComplete);
+                    }
+                }
+            );
+        } catch (\Exception $e) {
+            $this->logError($e);
+            if ($callback) {
+                $callback(['error' => $e->getMessage()], true);
+            }
+        }
+    }
+
     protected function validateMessages(array $messages): void {
         if (empty($messages)) {
             throw new \InvalidArgumentException('Messages cannot be empty');
